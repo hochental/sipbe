@@ -1,1 +1,16 @@
 {% extends 'details.html.twig' %}
+{% block body %}
+
+
+
+    <div class="article">
+        <h2>{{ blog.title }}</h2>
+        <h4>{{ blog.author }}, data publikacji: {{ blog.publicationDate|date('F j, Y, g:i a') }}</h4>
+        <div class="clr"></div>
+        {{ blog.content | raw}}
+        <p class="spec"><a href="http://127.0.0.1:8000/blog/list" class="rm">&laquo; Powrot</a></p>
+        </div>
+
+
+
+{%  endblock %}

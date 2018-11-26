@@ -1,1 +1,27 @@
 {% extends 'base.html.twig' %}
+{% block body %}
+
+    {% for blog in blog %}
+
+    <div class="article">
+    <h2>{{ blog.title }}</h2>
+    <p class="infopost">Posted on <span class="date">{{ blog.publicationDate|date('F j, Y, g:i a') }}</span> by <a href="#">{{ blog.author }}</a> &nbsp;&nbsp;|&nbsp;&nbsp; Filed under <a href="#">templates</a>, <a href="#">internet</a> <a href="#" class="com"><span>{{ blog.id }}</span></a></p>
+    <div class="clr"></div>
+    <div class="img"><img src="{{ blog.imageUrl }}" width="169" height="205" alt="" class="fl" /></div>
+    <div class="post_content">
+        {{ blog.shortedContent }}
+        <p class="spec"><a href="http://127.0.0.1:8000/blog/details/{{ blog.Id }}" class="rm">Czytaj wiecej &raquo;</a></p>
+    </div>
+    <div class="clr"></div>
+    </div>
+
+    {%  endfor %}
+
+    <div class="navigation">
+        {{ knp_pagination_render(blog) }}
+    </div>
+
+
+{%  endblock %}
+
+
