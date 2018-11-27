@@ -19,9 +19,14 @@ class BlogController extends Controller
      */
     public function listAction(Request $request)
     {
-        $blog = $this->getDoctrine()
+        $em=$this->getDoctrine()->getManager();
+
+        /*$blog = $this->getDoctrine()
             ->getRepository('AppBundle:Blog')
-            ->findAll();
+            ->findAll();*/
+
+        $dql="SELECT bp FROM AppBundle:Blog bp WHERE bp.publicationDate<=CURRENT_DATE()";
+        $blog=$em->createQuery($dql);
 
         /**
          * @var $paginator \Knp\Component\Pager\Paginator"
@@ -38,11 +43,78 @@ class BlogController extends Controller
     /**
      * @Route("/blog/edit/{id}", name="blog_edit")
      */
-    public function editAction(Request $request)
+    public function editAction($id, Request $request)
     {
+        $blog = $this->getDoctrine()
+            ->getRepository('AppBundle:Blog')
+            ->find($id);
 
-        return $this->render('blog_actions/edit.html.twig');
-    }
+        $blog->setTitle($blog->getTitle());
+        $blog->setAuthor($blog->getAuthor());
+        $blog->setPublicationDate($blog->getPublicationDate());
+        $blog->setContent($blog->getContent());
+        $blog->setImageUrl($blog->getImageUrl());
+        $blog->setShortedContent($blog->getShortedContent());
+
+        $form = $this->createFormBuilder($blog)
+            ->add('title', TextType::Class, array('attr' => array('class' => 'form-control')))
+            ->add('author', TextType::Class, array('attr' => array('class' => 'form-control')))
+            ->add('publicationDate', DateTimeType::Class, array('attr' => array('class' => 'form-control')))
+            ->add('content', CkeditorType::class, array(
+                'transformers' => array('html_purifier'),
+                'toolbar' => array('document', 'basicstyles', 'styles'),
+                'toolbar_groups' => array(
+                    'document' => array('Source')
+                ),
+                'ui_color' => '#fff',
+                'startup_outline_blocks' => false,
+                'width' => '100%',
+                'height' => '320',
+                'language' => 'en-au',
+                'filebrowser_image_browse_url' => array(
+                    'url' => 'relative-url.php?type=file',
+                ),
+            ))
+            ->add('imageUrl', TextType::Class, array('attr' => array('class' => 'form-control')))
+            ->add('shortedContent', TextType::Class, array('attr' => array('class' => 'form-control')))
+            ->add('save', SubmitType::Class, array('label' => 'Create Post', 'attr' => array('class' => 'form-control')))
+            ->getForm();
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $title = $form['title']->getData();
+            $author = $form['author']->getData();
+            $publicationDate = $form['publicationDate']->getData();
+            $content = $form['content']->getData();
+            $imageUrl = $form['imageUrl']->getData();
+            $shortedContent = $form['shortedContent']->getData();
+
+            $temp = $this->getDoctrine()->getManager();
+            $blog = $temp->getRepository('AppBundle:Blog')->find($id);
+
+            $blog->setTitle($title);
+            $blog->setAuthor($author);
+            $blog->setPublicationDate($publicationDate);
+            $blog->setContent($content);
+            $blog->setImageUrl($imageUrl);
+            $blog->setShortedContent($shortedContent);
+
+
+            $temp->persist($blog);
+            $temp->flush();
+
+            $this->addFlash(
+                'notice',
+                'Blog Updated'
+            );
+
+            return $this->redirectToRoute("http://127.0.0.1:8000/blog/list");
+
+        }
+            return $this->render('blog_actions/edit.html.twig', array('blog' => $blog, 'form' => $form->createView()));
+        }
+
     /**
      * @Route("/blog/new", name="blog_new")
      */
@@ -99,7 +171,7 @@ class BlogController extends Controller
                       'Blog Added'
             );
 
-            return $this->redirectToRoute('http://127.0.0.1:8000/blog/list');
+            return $this->redirectToRoute("http://127.0.0.1:8000/blog/list");
 
         }
 
