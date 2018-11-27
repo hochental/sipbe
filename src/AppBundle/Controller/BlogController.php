@@ -6,7 +6,6 @@ use AppBundle\Entity\Blog;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
-use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -15,18 +14,22 @@ use Trsteel\CkeditorBundle\Form\Type\CkeditorType;
 class BlogController extends Controller
 {
     /**
-     * @Route("/blog/list", name="blog_list")
+     * @Route("/", name="blog_list")
      */
     public function listAction(Request $request)
     {
-        $em=$this->getDoctrine()->getManager();
+        $auth_checker = $this->get('security.authorization_checker');
+        $isRoleAdmin = $auth_checker->isGranted('ROLE_ADMIN');
 
-        /*$blog = $this->getDoctrine()
+        if($isRoleAdmin) {
+            $em = $this->getDoctrine()->getManager();
+            $dql = "SELECT bp FROM AppBundle:Blog bp WHERE bp.publicationDate<=CURRENT_DATE()";
+            $blog = $em->createQuery($dql);
+        }else{
+            $blog = $this->getDoctrine()
             ->getRepository('AppBundle:Blog')
-            ->findAll();*/
-
-        $dql="SELECT bp FROM AppBundle:Blog bp WHERE bp.publicationDate<=CURRENT_DATE()";
-        $blog=$em->createQuery($dql);
+            ->findAll();
+        }
 
         /**
          * @var $paginator \Knp\Component\Pager\Paginator"
@@ -41,10 +44,15 @@ class BlogController extends Controller
         return $this->render('blog_actions/list.html.twig', array( 'blog' =>$result));
     }
     /**
-     * @Route("/blog/edit/{id}", name="blog_edit")
+     * @Route("/edit/{id}", name="blog_edit")
      */
     public function editAction($id, Request $request)
     {
+
+        $auth_checker = $this->get('security.authorization_checker');
+        $isRoleAdmin = $auth_checker->isGranted('ROLE_ADMIN');
+
+        if($isRoleAdmin) {
         $blog = $this->getDoctrine()
             ->getRepository('AppBundle:Blog')
             ->find($id);
@@ -104,81 +112,78 @@ class BlogController extends Controller
             $temp->persist($blog);
             $temp->flush();
 
-            $this->addFlash(
-                'notice',
-                'Blog Updated'
-            );
-
-            return $this->redirectToRoute("http://127.0.0.1:8000/blog/list");
-
         }
             return $this->render('blog_actions/edit.html.twig', array('blog' => $blog, 'form' => $form->createView()));
+        }else{
+            return $this->render('blog_actions/delete.html.twig');
+        }
         }
 
     /**
-     * @Route("/blog/new", name="blog_new")
+     * @Route("/new", name="blog_new")
      */
     public function newAction(Request $request)
     {
-        $blog= new Blog;
-        $form=$this->createFormBuilder($blog)
-            ->add('title', TextType::Class, array('attr' => array('class'=>'form-control')))
-            ->add('author', TextType::Class, array('attr' => array('class'=>'form-control')))
-            ->add('publicationDate', DateTimeType::Class, array('attr' => array('class'=>'form-control')))
-            ->add('content', CkeditorType::class, array(
-                'transformers'                 => array('html_purifier'),
-                'toolbar'                      => array('document','basicstyles', 'styles'),
-                'toolbar_groups'               => array(
-                    'document' => array('Source')
-                ),
-                'ui_color'                     => '#fff',
-                'startup_outline_blocks'       => false,
-                'width'                        => '100%',
-                'height'                       => '320',
-                'language'                     => 'en-au',
-                'filebrowser_image_browse_url' => array(
-                    'url' => 'relative-url.php?type=file',
-                ),
-            ))
-            ->add('imageUrl', TextType::Class, array('attr' => array('class'=>'form-control')))
-            ->add('shortedContent', TextType::Class, array('attr' => array('class'=>'form-control')))
-            ->add('save', SubmitType::Class, array('label'=>'Create Post', 'attr' => array('class'=>'form-control')))
-            ->getForm();
+        $auth_checker = $this->get('security.authorization_checker');
+        $isRoleAdmin = $auth_checker->isGranted('ROLE_ADMIN');
 
-        $form->handleRequest($request);
+        if ($isRoleAdmin) {
+            $blog = new Blog;
+            $form = $this->createFormBuilder($blog)
+                ->add('title', TextType::Class, array('attr' => array('class' => 'form-control')))
+                ->add('author', TextType::Class, array('attr' => array('class' => 'form-control')))
+                ->add('publicationDate', DateTimeType::Class, array('attr' => array('class' => 'form-control')))
+                ->add('content', CkeditorType::class, array(
+                    'transformers' => array('html_purifier'),
+                    'toolbar' => array('document', 'basicstyles', 'styles'),
+                    'toolbar_groups' => array(
+                        'document' => array('Source')
+                    ),
+                    'ui_color' => '#fff',
+                    'startup_outline_blocks' => false,
+                    'width' => '100%',
+                    'height' => '320',
+                    'language' => 'en-au',
+                    'filebrowser_image_browse_url' => array(
+                        'url' => 'relative-url.php?type=file',
+                    ),
+                ))
+                ->add('imageUrl', TextType::Class, array('attr' => array('class' => 'form-control')))
+                ->add('shortedContent', TextType::Class, array('attr' => array('class' => 'form-control')))
+                ->add('save', SubmitType::Class, array('label' => 'Create Post', 'attr' => array('class' => 'form-control')))
+                ->getForm();
 
-        if($form->isSubmitted()&&$form->isValid()){
-            $title=$form['title']->getData();
-            $author=$form['author']->getData();
-            $publicationDate=$form['publicationDate']->getData();
-            $content=$form['content']->getData();
-            $imageUrl=$form['imageUrl']->getData();
-            $shortedContent=$form['shortedContent']->getData();
+            $form->handleRequest($request);
 
-            $blog->setTitle($title);
-            $blog->setAuthor($author);
-            $blog->setPublicationDate($publicationDate);
-            $blog->setContent($content);
-            $blog->setImageUrl($imageUrl);
-            $blog->setShortedContent($shortedContent);
+            if ($form->isSubmitted() && $form->isValid()) {
+                $title = $form['title']->getData();
+                $author = $form['author']->getData();
+                $publicationDate = $form['publicationDate']->getData();
+                $content = $form['content']->getData();
+                $imageUrl = $form['imageUrl']->getData();
+                $shortedContent = $form['shortedContent']->getData();
 
-            $temp = $this->getDoctrine()->getManager();
-            $temp->persist($blog);
-            $temp->flush();
+                $blog->setTitle($title);
+                $blog->setAuthor($author);
+                $blog->setPublicationDate($publicationDate);
+                $blog->setContent($content);
+                $blog->setImageUrl($imageUrl);
+                $blog->setShortedContent($shortedContent);
 
-            $this->addFlash(
-                'notice',
-                      'Blog Added'
-            );
+                $temp = $this->getDoctrine()->getManager();
+                $temp->persist($blog);
+                $temp->flush();
 
-            return $this->redirectToRoute("http://127.0.0.1:8000/blog/list");
+            }
 
+            return $this->render('blog_actions/new.html.twig', array('form' => $form->createView()));
+        } else {
+            return $this->render('blog_actions/delete.html.twig');
         }
-
-        return $this->render('blog_actions/new.html.twig', array('form'=>$form->createView()));
     }
+
     /**
-     * @Route("/blog/details/{id}", name="blog_details")
+     * @Route("/details/{id}", name="blog_details")
      */
     public function detailsAction($id)
     {
